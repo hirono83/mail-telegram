@@ -5,10 +5,13 @@
   - Obsidian이 실행 중이어야 합니다.
   - 커뮤니티 플러그인 "Local REST API" (coddingtonbear/obsidian-local-rest-api) 설치 + 활성화.
   - 플러그인 설정에서 API 키를 발급받아 .env의 OBSIDIAN_API_KEY에 채워야 합니다.
-  - 오늘 노트(daily note) 기능을 쓰려면 Obsidian 코어 "Daily notes" 플러그인 또는
-    "Periodic Notes" 플러그인이 활성화되어 있어야 합니다.
   - 플러그인은 자체 서명 인증서로 HTTPS를 서비스하므로 verify=False로 호출합니다
     (로컬호스트 전용 통신이므로 허용).
+
+daily note 경로는 `/periodic/daily/` 엔드포인트에 의존하지 않고, Obsidian의 Daily notes 코어
+플러그인 설정(새 파일 위치 / 날짜 형식)과 동일한 값을 .env에 그대로 넣어 `/vault/{폴더}/{날짜}.md`
+경로로 직접 씁니다. (`/periodic/`는 Local REST API 플러그인 버전에 따라 지원하지 않을 수 있어
+확인된 이 방식이 더 안정적입니다.)
 
 사용법:
   python3 obsidian_client.py append-daily --file report.md
@@ -19,6 +22,8 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
+from urllib.parse import quote
 
 import requests
 import urllib3
@@ -30,6 +35,11 @@ load_dotenv()
 API_URL = os.environ.get("OBSIDIAN_API_URL", "https://127.0.0.1:27124").rstrip("/")
 API_KEY = os.environ.get("OBSIDIAN_API_KEY")
 
+# Obsidian 설정 > Core plugins > Daily notes 에 표시된 값과 동일하게 맞추세요.
+DAILY_FOLDER = os.environ.get("OBSIDIAN_DAILY_FOLDER", "Daily")
+# Python strftime 형식. Obsidian의 "YYYY-MM-DD"는 strftime "%Y-%m-%d"와 동일합니다.
+DAILY_DATE_FORMAT = os.environ.get("OBSIDIAN_DAILY_DATE_FORMAT", "%Y-%m-%d")
+
 
 def _headers(content_type="text/markdown"):
     if not API_KEY:
@@ -37,28 +47,35 @@ def _headers(content_type="text/markdown"):
     return {"Authorization": f"Bearer {API_KEY}", "Content-Type": content_type}
 
 
-def append_daily(content: str) -> str:
-    """오늘 날짜의 daily note 끝에 content를 추가한다 (없으면 템플릿대로 생성 후 추가)."""
-    url = f"{API_URL}/periodic/daily/"
-    resp = requests.post(url, headers=_headers(), data=content.encode("utf-8"), verify=False, timeout=15)
-    resp.raise_for_status()
-    return "periodic/daily"
+def _encode_path(path: str) -> str:
+    """경로 안 공백/한글 등을 세그먼트 단위로 URL 인코딩 (슬래시는 구분자로 유지)."""
+    return "/".join(quote(segment, safe="") for segment in path.split("/"))
+
+
+def daily_note_path() -> str:
+    date_str = datetime.now().strftime(DAILY_DATE_FORMAT)
+    return f"{DAILY_FOLDER}/{date_str}.md"
 
 
 def put_note(path: str, content: str) -> str:
     """지정한 경로의 노트를 생성하거나 전체 내용을 덮어쓴다."""
-    url = f"{API_URL}/vault/{path}"
+    url = f"{API_URL}/vault/{_encode_path(path)}"
     resp = requests.put(url, headers=_headers(), data=content.encode("utf-8"), verify=False, timeout=15)
     resp.raise_for_status()
     return path
 
 
 def append_note(path: str, content: str) -> str:
-    """지정한 경로의 기존 노트 끝에 내용을 추가한다."""
-    url = f"{API_URL}/vault/{path}"
+    """지정한 경로의 노트 끝에 내용을 추가한다 (없으면 새로 생성됨)."""
+    url = f"{API_URL}/vault/{_encode_path(path)}"
     resp = requests.post(url, headers=_headers(), data=content.encode("utf-8"), verify=False, timeout=15)
     resp.raise_for_status()
     return path
+
+
+def append_daily(content: str) -> str:
+    """오늘 날짜의 daily note 끝에 content를 추가한다 (없으면 새로 생성됨)."""
+    return append_note(daily_note_path(), content)
 
 
 def _read_input(args):

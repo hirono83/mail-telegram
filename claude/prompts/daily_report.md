@@ -73,7 +73,7 @@ osascript -l JavaScript scripts/mail/apply_actions.js state/mail_actions.json
 python3 scripts/obsidian/obsidian_client.py append-daily --file <임시파일>
 ```
 
-(Obsidian Local REST API의 `/periodic/daily/` 엔드포인트를 사용하므로 옵시디언 앱이 실행 중이어야 하고 Daily/Periodic Notes 기능이 켜져 있어야 한다.)
+(`.env`의 `OBSIDIAN_DAILY_FOLDER`/`OBSIDIAN_DAILY_DATE_FORMAT` 설정에 따라 옵시디언 Daily notes와 동일한 경로에 기록되므로, 옵시디언 앱이 실행 중이어야 한다.)
 
 ## 5. 마무리
 

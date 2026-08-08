@@ -75,9 +75,11 @@ python3 scripts/telegram/fetch_messages.py | head -c 500
 
 1. Obsidian에서 커뮤니티 플러그인 **Local REST API**를 설치하고 활성화합니다.
 2. 플러그인 설정 화면에서 API 키를 복사해 `.env`의 `OBSIDIAN_API_KEY`에 붙여넣습니다.
-3. Daily note 기능(코어 플러그인 "Daily notes" 또는 "Periodic Notes")을 켜둡니다.
-   `obsidian_client.py append-daily`는 `/periodic/daily/` 엔드포인트를 사용해 오늘 노트에
-   자동으로 append합니다.
+3. 코어 플러그인 **Daily notes**를 켜고, 설정에 표시된 "새 파일 위치"(폴더)와 "날짜 형식"을
+   확인해 `.env`의 `OBSIDIAN_DAILY_FOLDER` / `OBSIDIAN_DAILY_DATE_FORMAT`에 똑같이 맞춥니다.
+   (`obsidian_client.py append-daily`는 `/periodic/` 엔드포인트 대신 이 값으로 만든
+   `/vault/{폴더}/{날짜}.md` 경로에 직접 append합니다 — Local REST API 플러그인 버전에 따라
+   `/periodic/`이 지원되지 않는 경우가 있어 더 안정적인 이 방식을 사용합니다.)
 4. Obsidian 앱이 항상 실행 중이어야 합니다 (자동화가 돌 때 꺼져 있으면 기록이 실패합니다).
 
 테스트:
