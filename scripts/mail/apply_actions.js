@@ -13,6 +13,10 @@
 //
 // messageId는 export_inbox.js가 내보낸 각 메일의 "messageId" (RFC Message-ID 헤더) 값을 그대로 사용합니다.
 // mailbox는 대상 메일함 이름(계정 내에서 검색)입니다. 하위 폴더까지 재귀적으로 검색합니다.
+//
+// 설계 노트: export_inbox.js와 마찬가지로 계정별 "INBOX" 메일함을 whose()로 직접 필터링해서 메시지를
+// 찾는다. 수천 건을 하나씩 순회하며 messageId를 비교하는 방식은 계정이 여러 개, 메일이 많을 때
+// 매우 느리고(수천 번의 AppleEvent 호출) Mail.app의 통합 inbox 순서도 신뢰할 수 없어 사용하지 않는다.
 
 ObjC.import('Foundation');
 
@@ -21,6 +25,14 @@ function readFile(path) {
   if (!nsData) throw new Error(`파일을 읽을 수 없습니다: ${path}`);
   const nsString = $.NSString.alloc.initWithDataEncoding(nsData, $.NSUTF8StringEncoding);
   return ObjC.unwrap(nsString);
+}
+
+function safeLength(spec) {
+  try {
+    return spec.length;
+  } catch (e) {
+    return 0;
+  }
 }
 
 function run(argv) {
@@ -33,45 +45,54 @@ function run(argv) {
   }
 
   const actions = JSON.parse(readFile(actionsPath));
-  const inboxMessages = Mail.inbox.messages;
+  const accounts = Mail.accounts();
+
+  const accountInboxes = [];
+  for (const acct of accounts) {
+    try {
+      const found = acct.mailboxes.whose({ name: 'INBOX' });
+      if (found.length > 0) accountInboxes.push(found[0]);
+    } catch (e) {
+      continue;
+    }
+  }
 
   function findMessageByMessageId(messageId) {
-    const count = inboxMessages.length;
-    for (let i = 0; i < count; i++) {
-      const m = inboxMessages[i];
+    for (const inbox of accountInboxes) {
       try {
-        if (m.messageId() === messageId) return m;
+        const matched = inbox.messages.whose({ messageId: messageId });
+        if (matched.length > 0) return matched[0];
       } catch (e) {
-        /* skip */
+        continue;
       }
     }
     return null;
   }
 
   function findMailboxRecursive(mailboxes, name) {
-    const count = mailboxes.length;
+    try {
+      const direct = mailboxes.whose({ name: name });
+      if (direct.length > 0) return direct[0];
+    } catch (e) {
+      /* whose 실패 시 아래 수동 순회로 폴백 */
+    }
+    const count = safeLength(mailboxes);
     for (let i = 0; i < count; i++) {
-      const mb = mailboxes[i];
       try {
-        if (mb.name() === name) return mb;
-      } catch (e) {
-        continue;
-      }
-      try {
+        const mb = mailboxes[i];
         const nested = findMailboxRecursive(mb.mailboxes, name);
         if (nested) return nested;
       } catch (e) {
-        /* no sub-mailboxes */
+        continue;
       }
     }
     return null;
   }
 
   function findMailboxByName(name) {
-    const accounts = Mail.accounts();
-    for (const acc of accounts) {
+    for (const acct of accounts) {
       try {
-        const found = findMailboxRecursive(acc.mailboxes, name);
+        const found = findMailboxRecursive(acct.mailboxes, name);
         if (found) return found;
       } catch (e) {
         continue;

@@ -7,9 +7,9 @@
 //   - 최초 실행 시 macOS가 "터미널이 Mail을 제어하려고 합니다" 권한 팝업을 띄웁니다. 허용하세요.
 //     (시스템 설정 > 개인정보 보호 및 보안 > 자동화 에서 나중에 재확인/변경 가능)
 //
-// 주의: Mail.app의 JXA 스크립팅 딕셔너리는 macOS 버전에 따라 속성명이 조금씩 다를 수 있습니다.
-// 이 스크립트는 Sonoma/Sequoia 기준으로 작성되었으며, 실제 환경에서 한 번 수동 실행해
-// 출력이 기대한 형태인지 확인 후 사용하세요 (README 참고).
+// 설계 노트: Mail.app의 특수 "inbox" 속성(통합 받은편지함)은 여러 계정을 하나로 이어붙이긴 하지만
+// 계정 경계를 넘어 날짜순으로 정렬해주지는 않는다 (실측 확인됨). 그래서 각 계정을 순회하며
+// 계정별 "INBOX" 메일함에서 whose()로 날짜 필터링을 해 가져온 뒤, 스크립트에서 직접 날짜순 정렬한다.
 
 ObjC.import('Foundation');
 
@@ -37,41 +37,59 @@ function run() {
   const lookbackDays = Number(getEnv('MAIL_LOOKBACK_DAYS', '2'));
   const cutoff = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 
-  const inboxMessages = Mail.inbox.messages;
-  const total = safeGet(() => inboxMessages.length, 0);
-  const scanCap = Math.min(total, maxMessages * 5); // 날짜 필터링 여유분
-
   const results = [];
-  for (let i = 0; i < scanCap; i++) {
-    const msg = inboxMessages[i];
+  const accounts = Mail.accounts();
 
-    const dateReceivedRaw = safeGet(() => msg.dateReceived());
-    if (!dateReceivedRaw) continue;
-    const dateReceived = new Date(dateReceivedRaw);
-    // 받은편지함은 최신순으로 정렬되어 있다고 가정. cutoff보다 오래된 메일이 나오면 중단.
-    if (dateReceived < cutoff) break;
+  for (const acct of accounts) {
+    const acctName = safeGet(() => acct.name(), null);
 
-    results.push({
-      id: safeGet(() => msg.id()),
-      messageId: safeGet(() => msg.messageId()),
-      subject: safeGet(() => msg.subject()),
-      sender: safeGet(() => msg.sender()),
-      dateReceived: dateReceived.toISOString(),
-      mailbox: safeGet(() => msg.mailbox().name()),
-      account: safeGet(() => msg.mailbox().account().name()),
-      flagged: safeGet(() => msg.flaggedStatus(), false),
-      read: safeGet(() => msg.readStatus(), false),
-      preview: safeGet(() => String(msg.content()).slice(0, 500), ''),
-    });
+    let inboxMailbox = null;
+    try {
+      const found = acct.mailboxes.whose({ name: 'INBOX' });
+      if (found.length > 0) inboxMailbox = found[0];
+    } catch (e) {
+      inboxMailbox = null;
+    }
+    if (!inboxMailbox) continue; // 이 계정엔 INBOX라는 이름의 메일함이 없음 (구조가 다를 수 있음)
 
-    if (results.length >= maxMessages) break;
+    let recentMessages;
+    let count;
+    try {
+      recentMessages = inboxMailbox.messages.whose({ dateReceived: { _greaterThan: cutoff } });
+      count = safeGet(() => recentMessages.length, 0);
+    } catch (e) {
+      continue; // 이 계정 필터링 실패 시 건너뛰고 다른 계정은 계속 처리
+    }
+
+    for (let i = 0; i < count; i++) {
+      const msg = recentMessages[i];
+      const dateReceivedRaw = safeGet(() => msg.dateReceived());
+      if (!dateReceivedRaw) continue;
+
+      results.push({
+        id: safeGet(() => msg.id()),
+        messageId: safeGet(() => msg.messageId()),
+        subject: safeGet(() => msg.subject()),
+        sender: safeGet(() => msg.sender()),
+        dateReceived: new Date(dateReceivedRaw).toISOString(),
+        mailbox: 'INBOX',
+        account: acctName,
+        flagged: safeGet(() => msg.flaggedStatus(), false),
+        read: safeGet(() => msg.readStatus(), false),
+        preview: safeGet(() => String(msg.content()).slice(0, 500), ''),
+      });
+    }
   }
+
+  // 계정별로 모은 뒤 전체를 다시 최신순 정렬 + 상한 적용
+  results.sort((a, b) => new Date(b.dateReceived) - new Date(a.dateReceived));
+  const capped = results.slice(0, maxMessages);
 
   return JSON.stringify(
     {
       exportedAt: new Date().toISOString(),
-      count: results.length,
-      messages: results,
+      count: capped.length,
+      messages: capped,
     },
     null,
     0
