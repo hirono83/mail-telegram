@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(state/**)",
+      "Read(claude/**)",
+      "Write(state/mail_actions.json)",
+      "Write(state/*.md)",
+      "Bash(osascript -l JavaScript scripts/mail/apply_actions.js:*)",
+      "Bash(python3 scripts/obsidian/obsidian_client.py:*)"
+    ]
+  }
+}
