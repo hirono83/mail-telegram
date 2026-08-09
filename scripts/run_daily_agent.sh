@@ -18,11 +18,10 @@ if [ -f .env ]; then
   set +a
 fi
 
-TS="$(date '+%Y-%m-%d %H:%M:%S')"
 LOG_FILE="logs/run.log"
 
 log() {
-  echo "[$TS] $*" >>"$LOG_FILE"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" >>"$LOG_FILE"
 }
 
 log "===== 데일리 에이전트 시작 ====="
@@ -40,9 +39,18 @@ if ! "$PYTHON_BIN" scripts/telegram/fetch_messages.py >state/telegram_export.jso
   echo '{"exportedAt":null,"chats":[],"error":"fetch_failed"}' >state/telegram_export.json
 fi
 
+# 실제로 Claude에게 전달되는 프롬프트를 파일로 남겨서, 간헐적으로 빈 응답이 오는 문제가
+# 스크립트 쪽(프롬프트가 비어있음)인지 claude CLI 쪽 문제인지 다음번에 바로 판별할 수 있게 한다.
+PROMPT_CONTENT="$(cat claude/prompts/daily_report.md)"
+echo "$PROMPT_CONTENT" >state/last_prompt_sent.md
+log "Claude 프롬프트 길이: ${#PROMPT_CONTENT}자 (state/last_prompt_sent.md에 저장됨)"
+if [ "${#PROMPT_CONTENT}" -lt 100 ]; then
+  log "경고: 프롬프트가 비정상적으로 짧습니다 (claude/prompts/daily_report.md 확인 필요)."
+fi
+
 log "Claude Code 에이전트 실행 중..."
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
-if ! "$CLAUDE_BIN" -p "$(cat claude/prompts/daily_report.md)" >>"$LOG_FILE" 2>&1; then
+if ! "$CLAUDE_BIN" -p "$PROMPT_CONTENT" >>"$LOG_FILE" 2>&1; then
   log "오류: Claude 에이전트 실행 실패"
   exit 1
 fi
