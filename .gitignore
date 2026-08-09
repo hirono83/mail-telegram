@@ -7,3 +7,6 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+# 개인 절대경로가 들어가는 실제 launchd plist (launchd/*.plist.template에서 복사해 생성).
+# 항상 git 상태를 깨끗하게 유지하기 위해 추적하지 않음.
+launchd/*.plist

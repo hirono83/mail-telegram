@@ -106,8 +106,16 @@ Claude가 headless(`claude -p`)로 실행되면서 `.claude/settings.json`에 �
 
 ## 매일 아침 6:30 자동 실행 등록 (launchd)
 
-1. `launchd/com.jisthex.mailtelegram.dailyagent.plist`를 열어 `REPO_PATH`를 이 저장소의 실제
-   절대 경로로 모두 바꿉니다 (예: `/Users/jisthex/mail-telegram`).
+1. 템플릿을 실제 plist로 복사한 뒤 `REPO_PATH`를 이 저장소의 실제 절대 경로로, PATH를
+   `claude`/`python3`가 실제로 있는 경로로 바꿉니다 (개인 경로가 들어가므로 이 파일은
+   `.gitignore`에 의해 git에 커밋되지 않습니다 — 항상 깨끗한 git 상태를 유지하기 위함입니다).
+
+   ```bash
+   cp launchd/com.jisthex.mailtelegram.dailyagent.plist.template launchd/com.jisthex.mailtelegram.dailyagent.plist
+   sed -i '' "s|REPO_PATH|$HOME/mail-telegram|g" launchd/com.jisthex.mailtelegram.dailyagent.plist
+   # claude, python3 위치가 다르다면 PATH도 맞게 수정하세요 (which claude / which python3로 확인)
+   ```
+
 2. 파일을 LaunchAgents 폴더에 복사합니다.
 
    ```bash
@@ -150,7 +158,7 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 - `scripts/obsidian/obsidian_client.py` — Obsidian Local REST API로 daily note에 기록.
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — 오케스트레이터가 headless Claude 실행에 넘기는 지시문.
-- `launchd/*.plist` — 매일 06:30 실행 스케줄 정의.
+- `launchd/*.plist.template` — 매일 06:30 실행 스케줄 정의 템플릿 (여기서 복사해 개인 경로를 채운 `.plist`는 git에 커밋되지 않음).
 - `state/` — 실행 중 생성되는 JSON/세션 파일 (git 추적 안 함, 민감 정보 포함 가능).
 - `logs/` — 실행 로그 (git 추적 안 함).
 
