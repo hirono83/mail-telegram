@@ -9,7 +9,10 @@
 //
 // 설계 노트: Mail.app의 특수 "inbox" 속성(통합 받은편지함)은 여러 계정을 하나로 이어붙이긴 하지만
 // 계정 경계를 넘어 날짜순으로 정렬해주지는 않는다 (실측 확인됨). 그래서 각 계정을 순회하며
-// 계정별 "INBOX" 메일함에서 whose()로 날짜 필터링을 해 가져온 뒤, 스크립트에서 직접 날짜순 정렬한다.
+// 계정별 "INBOX" 메일함에서 whose()로 안읽음 필터링을 해 가져온 뒤, 스크립트에서 직접 날짜순 정렬한다.
+//
+// "최근 N일" 같은 날짜 기준이 아니라 "읽지 않은 메일 전부"를 대상으로 한다 — 오래 방치된 안읽은
+// 메일도 빠짐없이 정리 대상에 포함시키기 위함이다. MAIL_MAX_MESSAGES는 안전장치용 상한일 뿐이다.
 
 ObjC.import('Foundation');
 
@@ -33,9 +36,7 @@ function run() {
   const Mail = Application('Mail');
   Mail.includeStandardAdditions = true;
 
-  const maxMessages = Number(getEnv('MAIL_MAX_MESSAGES', '150'));
-  const lookbackDays = Number(getEnv('MAIL_LOOKBACK_DAYS', '2'));
-  const cutoff = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
+  const maxMessages = Number(getEnv('MAIL_MAX_MESSAGES', '500'));
 
   const results = [];
   const accounts = Mail.accounts();
@@ -52,17 +53,17 @@ function run() {
     }
     if (!inboxMailbox) continue; // 이 계정엔 INBOX라는 이름의 메일함이 없음 (구조가 다를 수 있음)
 
-    let recentMessages;
+    let unreadMessages;
     let count;
     try {
-      recentMessages = inboxMailbox.messages.whose({ dateReceived: { _greaterThan: cutoff } });
-      count = safeGet(() => recentMessages.length, 0);
+      unreadMessages = inboxMailbox.messages.whose({ readStatus: false });
+      count = safeGet(() => unreadMessages.length, 0);
     } catch (e) {
       continue; // 이 계정 필터링 실패 시 건너뛰고 다른 계정은 계속 처리
     }
 
     for (let i = 0; i < count; i++) {
-      const msg = recentMessages[i];
+      const msg = unreadMessages[i];
       const dateReceivedRaw = safeGet(() => msg.dateReceived());
       if (!dateReceivedRaw) continue;
 
