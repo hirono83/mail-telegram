@@ -8,8 +8,12 @@
 //   { "messageId": "<rfc-message-id>", "action": "unflag" },
 //   { "messageId": "<rfc-message-id>", "action": "markRead" },
 //   { "messageId": "<rfc-message-id>", "action": "markUnread" },
-//   { "messageId": "<rfc-message-id>", "action": "move", "mailbox": "Archive" }
+//   { "messageId": "<rfc-message-id>", "action": "move", "mailbox": "Archive" },
+//   { "messageId": "<rfc-message-id>", "action": "delete" }
 // ]
+//
+// delete는 Mail.app의 기본 삭제 동작과 동일하게 해당 계정의 휴지통 메일함으로 이동시킨다
+// (즉시 영구 삭제가 아니라 소프트 삭제).
 //
 // messageId는 export_inbox.js가 내보낸 각 메일의 "messageId" (RFC Message-ID 헤더) 값을 그대로 사용합니다.
 // mailbox는 대상 메일함 이름(계정 내에서 검색)입니다. 하위 폴더까지 재귀적으로 검색합니다.
@@ -125,6 +129,8 @@ function run(argv) {
           continue;
         }
         Mail.move(msg, { to: dest });
+      } else if (action.action === 'delete') {
+        Mail.delete(msg);
       } else {
         results.push({ messageId: action.messageId, status: 'unknown_action', action: action.action });
         continue;

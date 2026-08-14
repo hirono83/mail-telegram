@@ -5,6 +5,9 @@
 다음 실행부터는 그 이후 메시지만 가져옵니다 (중복 수집 방지). 체크포인트가 없는 채팅방은
 TELEGRAM_LOOKBACK_HOURS 만큼만 거슬러 올라갑니다.
 
+안 읽은 메시지가 있는 채팅방은 텔레그램 자체에서도 읽음 처리한다 (send_read_acknowledge) —
+휴대폰/앱의 안 읽음 뱃지가 실제로 사라진다.
+
 사용법:
     python3 fetch_messages.py > state/telegram_export.json
 
@@ -101,6 +104,12 @@ for dialog in client.iter_dialogs():
             "last_message_id": newest_id,
             "last_synced": datetime.now(timezone.utc).isoformat(),
         }
+
+    if dialog.unread_count and dialog.unread_count > 0:
+        try:
+            client.send_read_acknowledge(dialog.entity)
+        except Exception:
+            pass  # 일부 채널/그룹은 읽음 처리가 제한될 수 있음 — 무시하고 계속 진행
 
 with open(CHECKPOINT_PATH, "w", encoding="utf-8") as f:
     json.dump(checkpoint, f, ensure_ascii=False, indent=2)

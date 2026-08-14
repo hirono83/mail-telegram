@@ -2,8 +2,8 @@
 
 맥북 Mail.app과 텔레그램(개인 계정)을 매일 아침 자동으로 훑어서
 
-1. 메일은 긴급/정보성/스팸성으로 분류해 플래그·읽음 처리·보관하고
-2. 텔레그램 새 메시지는 요약해서
+1. 메일은 안 읽은 것을 일괄 읽음 처리하고, 스팸/광고성만 삭제하고, 나머지는 요약해서 보고하고
+2. 텔레그램은 안 읽은 메시지를 일괄 읽음 처리하고, 투자/시장 관련 내용만 골라 인사이트로 정리해서
 
 옵시디언 daily note에 기록하는 개인 자동화 에이전트입니다.
 
@@ -152,7 +152,7 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 ## 구성
 
 - `scripts/mail/export_inbox.js` — JXA. Mail.app 받은편지함을 `state/mail_export.json`으로 내보냄.
-- `scripts/mail/apply_actions.js` — JXA. `state/mail_actions.json`에 적힌 액션(flag/markRead/move)을 Mail.app에 적용.
+- `scripts/mail/apply_actions.js` — JXA. `state/mail_actions.json`에 적힌 액션(flag/markRead/move/delete)을 Mail.app에 적용.
 - `scripts/telegram/login.py` — 최초 1회 대화형 MTProto 로그인 (세션을 `state/telegram.session`에 저장).
 - `scripts/telegram/fetch_messages.py` — 저장된 세션으로 새 메시지를 `state/telegram_export.json`으로 내보냄. 체크포인트(`state/telegram_checkpoint.json`)로 중복 수집 방지.
 - `scripts/obsidian/obsidian_client.py` — Obsidian Local REST API로 daily note에 기록.
@@ -164,8 +164,8 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 
 ## 안전 원칙
 
-- 메일은 **절대 삭제하지 않습니다** (flag/markRead/move만 허용).
-- 애매한 메일은 그대로 둡니다 (과도한 자동 처리 금지).
+- **명백한 스팸/광고성 메일만** 삭제(휴지통 이동)됩니다. 조금이라도 애매하면 삭제하지 않고 읽음 처리 후 요약에 포함됩니다.
+- 스팸/광고성이 아닌 메일은 절대 삭제되지 않습니다.
 - 텔레그램 세션 파일, `.env`, `state/`, `logs/`는 git에 커밋하지 않습니다.
 
 ## 문제 해결
