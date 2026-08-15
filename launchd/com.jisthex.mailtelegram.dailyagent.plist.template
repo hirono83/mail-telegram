@@ -5,20 +5,21 @@
     <key>Label</key>
     <string>com.jisthex.mailtelegram.dailyagent</string>
 
-    <!-- REPO_PATH를 이 저장소를 clone/다운로드한 실제 절대 경로로 바꾸세요. -->
+    <!-- REPO_PATH를 이 저장소를 clone/다운로드한 실제 절대 경로로 바꾸세요.
+         scheduler_check.sh는 짧은 주기로 깨어있는지만 확인하고, 오늘 아직 실행 안 했으면서
+         오전 6시가 지났을 때만 실제로 run_daily_agent.sh를 실행한다 (state/last_daily_run_date.txt
+         로 하루 한 번만 실행되도록 보장). 고정 시각이 아니라 "06:00 이후 맥이 깨어있는 가장 이른
+         시점"에 실행하기 위한 구조. -->
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>REPO_PATH/scripts/run_daily_agent.sh</string>
+        <string>REPO_PATH/scripts/scheduler_check.sh</string>
     </array>
 
-    <key>StartCalendarInterval</key>
-    <dict>
-        <key>Hour</key>
-        <integer>6</integer>
-        <key>Minute</key>
-        <integer>30</integer>
-    </dict>
+    <!-- 300초(5분)마다 체크한다. 맥이 절전 중이면 launchd가 기다렸다가 깨어난 직후 바로
+         실행해준다 (StartInterval의 표준 동작). -->
+    <key>StartInterval</key>
+    <integer>300</integer>
 
     <!-- claude, python3, osascript 등을 PATH에서 찾을 수 있도록 최소한의 PATH를 지정합니다.
          본인 환경에 맞게 (예: pyenv, nvm, homebrew 경로 등) 조정하세요. -->

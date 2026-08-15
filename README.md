@@ -104,7 +104,13 @@ Claude가 headless(`claude -p`)로 실행되면서 `.claude/settings.json`에 �
 하면 승인 프롬프트가 떠서 자동 실행이 멈출 수 있습니다. 이런 경우가 반복되면 `.claude/settings.json`의
 `permissions.allow` 목록에 필요한 명령을 추가하세요.
 
-## 매일 아침 6:30 자동 실행 등록 (launchd)
+## 매일 오전 6시 이후 첫 기회에 자동 실행 등록 (launchd)
+
+고정된 시각(예: 매일 06:30)이 아니라, **매일 오전 6시가 지난 뒤 맥이 깨어있는 가장 이른 시점**에
+실행되도록 구성되어 있습니다. `scripts/scheduler_check.sh`가 5분마다 조용히 깨어있는지만
+확인하다가, "오늘 아직 안 돌았고 오전 6시가 지났다"는 조건이 처음 만족되면 그때
+`run_daily_agent.sh`를 한 번 실행합니다. 맥이 절전 중이었다면 깨어난 직후 바로 실행되고,
+계속 깨어있었다면 06:00을 넘긴 첫 체크(늦어도 06:05 이내)에 실행됩니다.
 
 1. 템플릿을 실제 plist로 복사한 뒤 `REPO_PATH`를 이 저장소의 실제 절대 경로로, PATH를
    `claude`/`python3`가 실제로 있는 경로로 바꿉니다 (개인 경로가 들어가므로 이 파일은
@@ -134,8 +140,12 @@ Claude가 headless(`claude -p`)로 실행되면서 `.claude/settings.json`에 �
    launchctl start com.jisthex.mailtelegram.dailyagent
    ```
 
-이제 매일 06:30에 자동으로 실행됩니다 (맥이 잠자기 상태면 깨어난 뒤 다음 기회에 실행되거나 건너뛸 수
-있습니다 — launchd 기본 동작).
+   (`scheduler_check.sh`가 즉시 실행되긴 하지만, 지금이 오전 6시 이전이거나 오늘 이미 실행됐으면
+   조용히 아무 것도 안 하고 끝납니다. 강제로 지금 바로 전체 파이프라인을 돌리고 싶으면
+   `bash scripts/run_daily_agent.sh`를 직접 실행하세요.)
+
+이제 매일 오전 6시가 지난 뒤 맥이 깨어있는 첫 순간에 자동으로 실행됩니다. 하루에 한 번만
+실행되도록 `state/last_daily_run_date.txt`에 마지막 실행 날짜를 기록해 중복 실행을 막습니다.
 
 등록 해제:
 
@@ -147,7 +157,7 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 
 - **메일 분류/정리 규칙, 옵시디언 기록 포맷**: `claude/prompts/daily_report.md` 수정
 - **수집 범위**(메일/텔레그램 처리 상한): `.env`
-- **실행 시각**: plist의 `StartCalendarInterval`
+- **실행 기준 시각**(현재 오전 6시): `scripts/scheduler_check.sh`의 `HOUR_NUM -lt 6` 조건, 체크 주기는 plist의 `StartInterval`
 - **보유 종목 목록** (텔레그램 인사이트에서 종목별 섹션으로 따로 분류됨):
 
   ```bash
@@ -167,7 +177,8 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — 오케스트레이터가 headless Claude 실행에 넘기는 지시문.
 - `config/holdings.example.md` — 보유 종목 목록 예시 템플릿 (여기서 복사해 만든 `config/holdings.md`는 git에 커밋되지 않음).
-- `launchd/*.plist.template` — 매일 06:30 실행 스케줄 정의 템플릿 (여기서 복사해 개인 경로를 채운 `.plist`는 git에 커밋되지 않음).
+- `scripts/scheduler_check.sh` — launchd가 5분마다 호출하는 얇은 체크 스크립트. 오늘 아직 실행 안 했고 오전 6시가 지났을 때만 `run_daily_agent.sh`를 실행한다.
+- `launchd/*.plist.template` — 5분마다 `scheduler_check.sh`를 호출하는 스케줄 정의 템플릿 (여기서 복사해 개인 경로를 채운 `.plist`는 git에 커밋되지 않음).
 - `state/` — 실행 중 생성되는 JSON/세션 파일 (git 추적 안 함, 민감 정보 포함 가능).
 - `logs/` — 실행 로그 (git 추적 안 함).
 

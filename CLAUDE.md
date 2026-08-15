@@ -17,7 +17,8 @@
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — `run_daily_agent.sh`가 headless Claude 실행에 넘기는 지시문. 메일 분류 기준, 액션 스키마, 옵시디언 기록 포맷이 정의되어 있음.
 - `config/holdings.example.md` — 보유 종목 목록 템플릿. 실제 `config/holdings.md`는 개인 금융정보라 git 추적 안 함.
-- `launchd/*.plist.template` — 매일 06:30 실행 스케줄 정의 템플릿 (설치는 README 참고).
+- `scripts/scheduler_check.sh` — launchd가 5분마다 호출. 오늘 아직 실행 안 했고 오전 6시가 지났을 때만 `run_daily_agent.sh`를 실행 (`state/last_daily_run_date.txt`로 하루 1회 보장).
+- `launchd/*.plist.template` — `scheduler_check.sh`를 5분마다 호출하는 스케줄 정의 템플릿 (설치는 README 참고).
 - `state/` — 실행 중 생성되는 JSON/세션 파일 (git 추적 안 함, 민감 정보 포함 가능).
 - `logs/` — 실행 로그 (git 추적 안 함).
 
