@@ -3,6 +3,7 @@
     "allow": [
       "Read(state/**)",
       "Read(claude/**)",
+      "Read(config/**)",
       "Edit(state/mail_actions.json)",
       "Edit(state/*.md)",
       "Bash(osascript -l JavaScript scripts/mail/apply_actions.js:*)",

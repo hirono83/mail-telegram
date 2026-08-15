@@ -16,6 +16,7 @@
 - `scripts/obsidian/obsidian_client.py` — Obsidian Local REST API로 daily note에 기록.
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — `run_daily_agent.sh`가 headless Claude 실행에 넘기는 지시문. 메일 분류 기준, 액션 스키마, 옵시디언 기록 포맷이 정의되어 있음.
+- `config/holdings.example.md` — 보유 종목 목록 템플릿. 실제 `config/holdings.md`는 개인 금융정보라 git 추적 안 함.
 - `launchd/*.plist.template` — 매일 06:30 실행 스케줄 정의 템플릿 (설치는 README 참고).
 - `state/` — 실행 중 생성되는 JSON/세션 파일 (git 추적 안 함, 민감 정보 포함 가능).
 - `logs/` — 실행 로그 (git 추적 안 함).
@@ -24,7 +25,7 @@
 
 1. `state/mail_export.json`, `state/telegram_export.json` 읽기
 2. 메일을 스팸/광고성 vs 그 외로 분류 → 스팸/광고성은 `delete`, 그 외는 `markRead` → `state/mail_actions.json` 작성 → `apply_actions.js`로 적용
-3. 텔레그램 메시지 중 투자/시장 관련 내용만 골라 종합 인사이트로 정리
+3. 텔레그램 메시지 중 투자/시장 관련 내용만 골라, `config/holdings.md`의 보유 종목 관련은 별도 섹션으로, 나머지는 일반 인사이트로 종합 정리
 4. 정해진 포맷으로 옵시디언 daily note에 append (`obsidian_client.py append-daily`)
 
 전체 지시문은 `claude/prompts/daily_report.md`가 원본이므로 규칙을 바꾸고 싶으면 그 파일을 수정한다.

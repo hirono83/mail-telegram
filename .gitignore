@@ -10,3 +10,5 @@ venv/
 # 개인 절대경로가 들어가는 실제 launchd plist (launchd/*.plist.template에서 복사해 생성).
 # 항상 git 상태를 깨끗하게 유지하기 위해 추적하지 않음.
 launchd/*.plist
+# 개인 보유 종목 목록 (config/holdings.example.md에서 복사해 생성). 금융정보라 커밋하지 않음.
+config/holdings.md

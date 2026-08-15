@@ -146,8 +146,16 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 ## 커스터마이징
 
 - **메일 분류/정리 규칙, 옵시디언 기록 포맷**: `claude/prompts/daily_report.md` 수정
-- **수집 범위**(며칠치 메일, 몇 시간치 텔레그램, 채팅방당 최대 개수): `.env`
+- **수집 범위**(메일/텔레그램 처리 상한): `.env`
 - **실행 시각**: plist의 `StartCalendarInterval`
+- **보유 종목 목록** (텔레그램 인사이트에서 종목별 섹션으로 따로 분류됨):
+
+  ```bash
+  cp config/holdings.example.md config/holdings.md
+  ```
+
+  `config/holdings.md`를 열어 한 줄에 종목 하나씩, 이름/별칭/영문명을 쉼표로 구분해 적으세요.
+  이 파일은 개인 금융정보라 git에 커밋되지 않습니다. 파일이 없으면 이 기능은 그냥 건너뜁니다.
 
 ## 구성
 
@@ -158,6 +166,7 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 - `scripts/obsidian/obsidian_client.py` — Obsidian Local REST API로 daily note에 기록.
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — 오케스트레이터가 headless Claude 실행에 넘기는 지시문.
+- `config/holdings.example.md` — 보유 종목 목록 예시 템플릿 (여기서 복사해 만든 `config/holdings.md`는 git에 커밋되지 않음).
 - `launchd/*.plist.template` — 매일 06:30 실행 스케줄 정의 템플릿 (여기서 복사해 개인 경로를 채운 `.plist`는 git에 커밋되지 않음).
 - `state/` — 실행 중 생성되는 JSON/세션 파일 (git 추적 안 함, 민감 정보 포함 가능).
 - `logs/` — 실행 로그 (git 추적 안 함).
