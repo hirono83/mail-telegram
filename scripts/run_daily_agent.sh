@@ -48,6 +48,11 @@ wait_for_network() {
 }
 wait_for_network
 
+# 옵시디언 기록 단계에서 Obsidian 앱이 꺼져있어 실패하는 경우가 반복돼서, 꺼져있으면
+# 여기서 자동으로 실행 시도한다. 이미 실행 중이면 open -a는 그냥 아무 효과 없이 넘어간다.
+log "Obsidian 실행 확인/시도..."
+open -a "Obsidian" 2>>"$LOG_FILE" || log "경고: Obsidian 자동 실행 시도 실패 (설치 여부/앱 이름 확인 필요)"
+
 log "Mail.app 받은편지함 내보내는 중..."
 if ! osascript -l JavaScript scripts/mail/export_inbox.js >state/mail_export.json 2>>"$LOG_FILE"; then
   log "경고: 메일 내보내기 실패. state/mail_export.json이 비어있을 수 있습니다."
@@ -69,6 +74,33 @@ log "Claude 프롬프트 길이: ${#PROMPT_CONTENT}자 (state/last_prompt_sent.m
 if [ "${#PROMPT_CONTENT}" -lt 100 ]; then
   log "경고: 프롬프트가 비정상적으로 짧습니다 (claude/prompts/daily_report.md 확인 필요)."
 fi
+
+# 위에서 Obsidian을 켰더라도 API 서버가 뜨기까지 몇 초~수십 초 걸릴 수 있다.
+# Claude가 옵시디언에 기록하기 전에 준비될 때까지 최대 1분 기다린다.
+wait_for_obsidian() {
+  local url="${OBSIDIAN_API_URL:-https://127.0.0.1:27124}/"
+  local max_wait_seconds=60
+  local interval=3
+  local waited=0
+  local status
+  while true; do
+    status="$(curl -k -s -o /dev/null -m 3 -w '%{http_code}' "$url" 2>/dev/null || echo "000")"
+    if [ "$status" != "000" ]; then
+      break
+    fi
+    if [ "$waited" -ge "$max_wait_seconds" ]; then
+      log "경고: ${max_wait_seconds}초 동안 Obsidian API가 응답하지 않았습니다. 그대로 진행합니다."
+      return 1
+    fi
+    sleep "$interval"
+    waited=$((waited + interval))
+  done
+  if [ "$waited" -gt 0 ]; then
+    log "Obsidian API 연결 확인됨 (${waited}초 대기함)"
+  fi
+  return 0
+}
+wait_for_obsidian
 
 log "Claude Code 에이전트 실행 중..."
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
