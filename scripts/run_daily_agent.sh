@@ -5,7 +5,19 @@
 # 3) 로컬 Claude Code CLI에게 정리/요약/옵시디언 기록을 맡긴다.
 set -euo pipefail
 
-REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# $0 대신 BASH_SOURCE로 절대경로를 먼저 구해둔다 (아래 caffeinate 재실행 시
+# 현재 작업 디렉토리가 달라도 항상 같은 스크립트를 정확히 가리키도록).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_PATH="$SCRIPT_DIR/$(basename "${BASH_SOURCE[0]}")"
+REPO_DIR="$(dirname "$SCRIPT_DIR")"
+
+# 실행 중 맥이 잠들면 텔레그램/Claude API 연결이 끊길 수 있어서, caffeinate로 자기 자신을
+# 감싸서 재실행한다 (idle sleep 방지). CAFFEINATED 가드로 무한 재귀를 막는다.
+if [ -z "${CAFFEINATED:-}" ]; then
+  export CAFFEINATED=1
+  exec caffeinate -i "$SCRIPT_PATH" "$@"
+fi
+
 cd "$REPO_DIR"
 
 mkdir -p state logs
@@ -102,10 +114,31 @@ wait_for_obsidian() {
 }
 wait_for_obsidian
 
-log "Claude Code 에이전트 실행 중..."
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
-if ! "$CLAUDE_BIN" -p "$PROMPT_CONTENT" >>"$LOG_FILE" 2>&1; then
-  log "오류: Claude 에이전트 실행 실패"
+CLAUDE_MAX_ATTEMPTS="${CLAUDE_MAX_ATTEMPTS:-3}"
+CLAUDE_RETRY_DELAY_SECONDS="${CLAUDE_RETRY_DELAY_SECONDS:-30}"
+
+# 연결이 응답 도중 끊기는 등 일회성 네트워크 문제로 실패하는 경우가 있어서, 실패하면
+# 잠시 기다렸다가 몇 번 더 시도한다. 재시도는 처음부터 새 대화로 다시 시작한다
+# (mail_actions.json 재작성/markRead·delete 재적용은 멱등적이라 안전하다).
+claude_attempt=1
+claude_succeeded=0
+while [ "$claude_attempt" -le "$CLAUDE_MAX_ATTEMPTS" ]; do
+  log "Claude Code 에이전트 실행 중... (시도 ${claude_attempt}/${CLAUDE_MAX_ATTEMPTS})"
+  if "$CLAUDE_BIN" -p "$PROMPT_CONTENT" >>"$LOG_FILE" 2>&1; then
+    claude_succeeded=1
+    break
+  fi
+  log "경고: Claude 에이전트 실행 실패 (시도 ${claude_attempt}/${CLAUDE_MAX_ATTEMPTS})"
+  if [ "$claude_attempt" -lt "$CLAUDE_MAX_ATTEMPTS" ]; then
+    log "${CLAUDE_RETRY_DELAY_SECONDS}초 후 재시도합니다..."
+    sleep "$CLAUDE_RETRY_DELAY_SECONDS"
+  fi
+  claude_attempt=$((claude_attempt + 1))
+done
+
+if [ "$claude_succeeded" -ne 1 ]; then
+  log "오류: Claude 에이전트 실행 실패 (${CLAUDE_MAX_ATTEMPTS}회 모두 실패)"
   exit 1
 fi
 
