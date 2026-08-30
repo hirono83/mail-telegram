@@ -91,7 +91,7 @@ fi
 # Claude가 옵시디언에 기록하기 전에 준비될 때까지 최대 1분 기다린다.
 wait_for_obsidian() {
   local url="${OBSIDIAN_API_URL:-https://127.0.0.1:27124}/"
-  local max_wait_seconds=60
+  local max_wait_seconds=120
   local interval=3
   local waited=0
   local status
@@ -117,6 +117,11 @@ wait_for_obsidian
 CLAUDE_BIN="${CLAUDE_BIN:-claude}"
 CLAUDE_MAX_ATTEMPTS="${CLAUDE_MAX_ATTEMPTS:-3}"
 CLAUDE_RETRY_DELAY_SECONDS="${CLAUDE_RETRY_DELAY_SECONDS:-30}"
+
+# Claude가 텔레그램 분석 등을 백그라운드 서브에이전트에 맡길 때, headless 모드 기본
+# 대기 한도(10분)를 넘기면 완료 전에 강제 종료되어 그날 기록이 통째로 날아간 적이 있었다.
+# 0으로 설정하면 무기한 대기한다 (실행이 오래 걸릴 수 있지만 중간에 끊기는 것보단 낫다).
+export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
 
 # 연결이 응답 도중 끊기는 등 일회성 네트워크 문제로 실패하는 경우가 있어서, 실패하면
 # 잠시 기다렸다가 몇 번 더 시도한다. 재시도는 처음부터 새 대화로 다시 시작한다

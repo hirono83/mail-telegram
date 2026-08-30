@@ -9,6 +9,10 @@
       "Bash(osascript -l JavaScript scripts/mail/apply_actions.js:*)",
       "Bash(python3 scripts/obsidian/obsidian_client.py:*)",
       "Bash(python3 scripts/insight_history.py:*)",
+      "Bash(/opt/anaconda3/bin/python3 scripts/obsidian/obsidian_client.py:*)",
+      "Bash(/opt/anaconda3/bin/python3 scripts/insight_history.py:*)",
+      "Bash(open -a Obsidian)",
+      "Bash(open -a \"Obsidian\")",
       "WebFetch"
     ]
   }
