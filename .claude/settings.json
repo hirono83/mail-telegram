@@ -7,7 +7,9 @@
       "Edit(state/mail_actions.json)",
       "Edit(state/*.md)",
       "Bash(osascript -l JavaScript scripts/mail/apply_actions.js:*)",
-      "Bash(python3 scripts/obsidian/obsidian_client.py:*)"
+      "Bash(python3 scripts/obsidian/obsidian_client.py:*)",
+      "Bash(python3 scripts/insight_history.py:*)",
+      "WebFetch"
     ]
   }
 }

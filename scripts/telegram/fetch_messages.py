@@ -15,11 +15,14 @@ TELEGRAM_LOOKBACK_HOURS 만큼만 거슬러 올라갑니다.
 """
 import json
 import os
+import re
 import sys
 from datetime import datetime, timedelta, timezone
 
 from dotenv import load_dotenv
 from telethon.sync import TelegramClient
+
+URL_RE = re.compile(r"https?://\S+")
 
 load_dotenv()
 
@@ -84,6 +87,7 @@ for dialog in client.iter_dialogs():
                 "date": msg.date.isoformat(),
                 "sender": sender_name or str(msg.sender_id),
                 "text": text,
+                "links": URL_RE.findall(text),
                 "outgoing": bool(msg.out),
             }
         )

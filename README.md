@@ -172,8 +172,9 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 - `scripts/mail/export_inbox.js` — JXA. Mail.app 받은편지함을 `state/mail_export.json`으로 내보냄.
 - `scripts/mail/apply_actions.js` — JXA. `state/mail_actions.json`에 적힌 액션(flag/markRead/move/delete)을 Mail.app에 적용.
 - `scripts/telegram/login.py` — 최초 1회 대화형 MTProto 로그인 (세션을 `state/telegram.session`에 저장).
-- `scripts/telegram/fetch_messages.py` — 저장된 세션으로 새 메시지를 `state/telegram_export.json`으로 내보냄. 체크포인트(`state/telegram_checkpoint.json`)로 중복 수집 방지.
+- `scripts/telegram/fetch_messages.py` — 저장된 세션으로 새 메시지를 `state/telegram_export.json`으로 내보냄. 체크포인트(`state/telegram_checkpoint.json`)로 중복 수집 방지. 메시지 안 URL도 `links` 필드로 같이 내보냄.
 - `scripts/obsidian/obsidian_client.py` — Obsidian Local REST API로 daily note에 기록.
+- `scripts/insight_history.py` — 투자 인사이트를 하루 단위로 `state/insight_history.jsonl`에 누적 기록/조회 (최근 추이 비교용).
 - `scripts/run_daily_agent.sh` — 위 세 가지를 순서대로 실행하고 마지막에 `claude -p`로 실제 정리/요약을 맡기는 오케스트레이터. launchd가 매일 이 스크립트를 호출한다.
 - `claude/prompts/daily_report.md` — 오케스트레이터가 headless Claude 실행에 넘기는 지시문.
 - `config/holdings.example.md` — 보유 종목 목록 예시 템플릿 (여기서 복사해 만든 `config/holdings.md`는 git에 커밋되지 않음).
@@ -198,3 +199,6 @@ launchctl unload ~/Library/LaunchAgents/com.jisthex.mailtelegram.dailyagent.plis
 - **launchd가 실행되지 않음**: `log show --predicate 'subsystem == "com.apple.xpc.launchd"' --last 1h`
   또는 `logs/launchd.err.log`를 확인하세요. PATH에 `claude`/`python3`/`osascript`가 잡히는지도
   확인이 필요합니다 (launchd는 로그인 셸의 PATH를 상속하지 않습니다).
+- **`logs/run.log`에 "permissions.allow entries ... not matched" 경고가 뜸**: `.claude/settings.json`의
+  권한 규칙 문법이 실제 Claude Code 버전과 안 맞는 경우입니다 (예전에 `Write(...)`가 `Edit(...)`로
+  바뀌어야 했던 것처럼). 경고 메시지가 대개 올바른 문법을 알려주니 그대로 고치면 됩니다.
